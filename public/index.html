@@ -1,3 +1,30 @@
-<title>Hello world!</title>
-<h1>How's it going?</h1>
-<p>Web dev is making me go insane...</p>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- TODO: add font awesome icons -->
+    <link rel="stylesheet" href="stylesheet.css">
+    <title>GroceryStore</title>
+</head>
+
+<body>
+
+    <h1>Welcome to the GroceryStore application.</h1>
+
+    <div class="login">
+        <h1>Login</h1>
+        <form action="/auth" method="post">
+            <label for="username">
+                <!-- TODO: add an icon here -->
+            </label>
+            <input type="text" name="username" placeholder="Username" id="username" required>
+            <label for="password">
+                <!-- TODO: add an icon here -->
+            </label>
+            <input type="password" name="password" placeholder="Password" id="password" required>
+            <input type="submit" value="Login">
+        </form>
+    </div>
+</body>
