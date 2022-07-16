@@ -1,16 +1,25 @@
 // /app.js, the main application file
+// Some code derived from Web Dev Simplified's tutorials on fullstack development https://www.youtube.com/watch?v=qj2oDkvc4dQ&list=PLZlA0Gpn_vH8jbFkBjOuFjhxANC63OmXM&index=6
 
 // Environment variables and express initialization
-require('dotenv').config();
+require('dotenv').config()
 const express = require('express')
+const expressLayouts = require('express-ejs-layouts')
 const app = express()
 const port = process.env.PORT || 8080
 
-//
-// PostgreSQL
-//
+const indexRouter = require('./routes/index')
 
-const db = require('./db');
+app.set('view engine', 'ejs')
+app.set('view', 'views')
+app.set('layout', 'layouts/layout')
+app.use(expressLayouts)
+app.use(express.static('public'))
+
+app.use('/', indexRouter)
+
+// PostgreSQL
+const db = require('./db')
 
 // Verifies the connection to the postgres database and returns a SELECT NOW() query
 db.connect((err, client, release) => {
@@ -58,9 +67,6 @@ app.get('/', (req, res) => {
   // res.send('Hello World!')
 })
 */
-
-// Serve the files in public to the root client
-app.use(express.static('public'))
 
 // Start listening to requests on the set port
 app.listen(port, () => {
