@@ -6,7 +6,7 @@
 // -- Fullstack development series https://www.youtube.com/playlist?list=PLZlA0Gpn_vH8jbFkBjOuFjhxANC63OmXM
 // -- Web App Security/Authentication series https://www.youtube.com/playlist?list=PLZlA0Gpn_vH9yI1hwDVzWqu5sAfajcsBQ
 
-// Environment variables and express initialization
+// Imports
 require("dotenv").config();
 const express = require("express");
 const expressLayouts = require("express-ejs-layouts");
@@ -98,21 +98,21 @@ app.post("/logout", function (req, res) {
   });
 });
 
-/* app.get("/search", (req, res) => {
-    db.query(
-        "SELECT team_abbreviation, wins, losses FROM teams",
-        (err, result) => {
-            console.log(result.rows);
-            res.render("search", { data: result.rows });
-        }
-    );
-}); */
-
+//FIXME:
 app.get("/search", async (req, res) => {
-  const result = await db.query("SELECT * FROM products");
-  console.log('Search results:')
-  console.log(result.rows);
-  res.render("search", { data: result.rows });
+  if (req.query.q) {
+    const result = await db.query(
+      "SELECT * FROM products WHERE name ILIKE $1 OR brand ILIKE $1",
+      ["%" + req.query.q + "%"]
+    );
+    console.log("/search: results for '" + req.query.q + "':");
+    console.log(result.rows);
+    console.log();
+    res.render("search", { data: result.rows, q: req.query.q });
+  } else {
+    console.log("/search: No query provided\n");
+    res.render("search", { q: req.query.q });
+  }
 });
 
 //FIXME:

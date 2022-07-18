@@ -20,6 +20,7 @@ function initialize(passport, getUserByEmail, getUserById) {
       return done(e);
     }
   };
+
   passport.use(
     new localStrategy(
       { usernameField: "email", passwordField: "password" },
@@ -28,9 +29,7 @@ function initialize(passport, getUserByEmail, getUserById) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser((id, done) => {
-    done(null, getUserById(id));
-  });
+  passport.deserializeUser((id, done) => done(null, getUserById(id)));
 }
 
 module.exports = initialize;

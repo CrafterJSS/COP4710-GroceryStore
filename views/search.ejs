@@ -1,3 +1,12 @@
+<form action="/search" method="get">
+  <div>
+    <label for="searchQuery">Search:</label>
+    <input type="text" id="searchQuery" name="q" autocomplete="off" />
+    <button type="submit">Go!</button>
+  </div>
+</form>
+<% if (q) { %>
+<h2>Search results for "<%= q %>":</h2>
 <table border="1">
   <tr>
     <th>UPC</th>
@@ -16,3 +25,4 @@
   </tr>
   <% }) %>
 </table>
+<% } %>
