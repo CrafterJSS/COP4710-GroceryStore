@@ -1,10 +1,18 @@
 <table border="1">
   <tr>
-    <th>Now</th>
+    <th>UPC</th>
+    <th>Name</th>
+    <th>Brand</th>
+    <th>Price</th>
+    <th>Qty</th>
   </tr>
   <% data.forEach(entry => { %>
   <tr>
-    <td><%= entry.now %></td>
+    <td><%= entry.upc %></td>
+    <td><%= entry.name %></td>
+    <td><%= entry.brand %></td>
+    <td><%= entry.price %></td>
+    <td><%= entry.qty %></td>
   </tr>
   <% }) %>
 </table>

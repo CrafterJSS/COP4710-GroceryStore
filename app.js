@@ -109,7 +109,8 @@ app.post("/logout", function (req, res) {
 }); */
 
 app.get("/search", async (req, res) => {
-  const result = await db.query("SELECT NOW()");
+  const result = await db.query("SELECT * FROM products");
+  console.log('Search results:')
   console.log(result.rows);
   res.render("search", { data: result.rows });
 });
