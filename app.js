@@ -18,6 +18,7 @@ const passport = require("passport");
 const session = require("express-session");
 const flash = require("express-flash");
 const port = process.env.PORT || 8080;
+const { exec } = require("child_process");
 const initializePassport = require("./auth/passport-config");
 
 // Only use database authentication if set to true
@@ -80,7 +81,7 @@ app.use(passport.session());
 // Routes
 //
 
-app.get("/", checkAuthenticated, (req, res) => {
+app.get("/", checkEmployeeAuthenticated, checkAuthenticated, (req, res) => {
   res.render("index", { name: req.user.name });
 });
 
@@ -152,6 +153,20 @@ app.get("/search", checkAuthenticated, async (req, res) => {
   }
 });
 
+app.get("/stores", async (req, res) => {
+  const result = await db.query("SELECT * FROM stores");
+  console.log("/stores");
+  console.log(result.rows);
+  console.log();
+  res.render("stores", { data: result.rows });
+});
+
+app.get("/password", checkAuthenticated, async (req, res) => {
+  res.render("password");
+});
+
+app.post("/password", checkAuthenticated, async (req, res) => {});
+
 // Employees route
 app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
   if (req.query.q) {
@@ -162,28 +177,41 @@ app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
     console.log("/employee/search: results for '" + req.query.q + "':");
     console.log(result.rows);
     console.log();
-    res.render("employee", { name: req.user.name, data: result.rows, q: req.query.q });
+    res.render("employee", {
+      name: req.user.name,
+      data: result.rows,
+      q: req.query.q,
+    });
   } else {
     console.log("/employee/search: No query provided\n");
     res.render("employee", { name: req.user.name, q: req.query.q });
   }
 });
 
-app.get('/employee/newproduct', async (req, res) => {
-  res.render("employee/newproduct", {response: null})
-})
+app.get("/employee/newproduct", checkEmployeeAuthenticated, async (req, res) => {
+  res.render("employee/newproduct", { response: null });
+});
 
-app.get('/employee/updateproduct', async (req, res) => {
-  res.render("employee/updateproduct")
-})
+app.post("/employee/newproduct", checkEmployeeAuthenticated, async (req, res) => {
+  await db.query(
+    "INSERT INTO products(upc, name, brand, price, qty) VALUES($1, $2, $3, $4, $5)",
+    [req.body.upc, req.body.name, req.body.brand, req.body.price, req.body.qty]
+  );
+  res.redirect("/employee/newproduct");
+});
 
-app.post('/employee/newproduct', async (req, res) => {
-    await db.query(
-      "INSERT INTO products(upc, name, brand, price, qty) VALUES($1, $2, $3, $4, $5)",
-      [req.body.upc, req.body.name, req.body.brand, req.body.price, req.body.qty]
-    );
-    res.redirect("/employee/newproduct");
-})
+app.get("/employee/updateproduct",checkEmployeeAuthenticated, async (req, res) => {
+  res.render("employee/updateproduct");
+});
+
+app.post("/employee/updateproduct",checkEmployeeAuthenticated, async (req, res) => {
+  await db.query("UPDATE products SET price = $2, qty = $3 WHERE upc = $1", [
+    req.body.upc,
+    req.body.price,
+    req.body.qty,
+  ]);
+  res.redirect("/employee/updateproduct");
+});
 
 // New Employee route
 app.get("employee/new", (req, res) => {
@@ -232,7 +260,7 @@ async function checkEmployeeAuthenticated(req, res, next) {
     }
   }
   console.log("Employee authentication failed");
-  res.redirect("/login");
+  res.redirect('/login')
 }
 
 //
@@ -267,46 +295,67 @@ db.connect(async (err, client, release) => {
     }
   );
   if (process.env.INIT_DB == 1) {
-    if (fs.existsSync("products.csv")) {
-      await console.log("DB: Initializing products");
+    if (
+      fs.existsSync("products.csv") &&
+      fs.existsSync("manages.csv") &&
+      fs.existsSync("stores.csv")
+    ) {
+      await console.log("DB: Initializing tables");
       await client.query("DROP TABLE IF EXISTS products");
+      await client.query("DROP TABLE IF EXISTS users CASCADE");
+      await client.query("DROP TABLE IF EXISTS employees");
+      await client.query("DROP TABLE IF EXISTS stores");
+      await client.query("DROP TABLE IF EXISTS manages");
+      await console.log("DB: Dropped tables");
       await client.query(
         "CREATE TABLE products (upc char(12) PRIMARY KEY, name varchar(50), brand varchar(30), price numeric(7, 2), qty int)"
       );
-      await console.log("DB: Re-created products table");
-      await client.query(
-        "COPY products(upc, name, brand, price, qty) FROM '" +
-          __dirname +
-          "/products.csv' DELIMITER ',' CSV HEADER"
-      );
-      await console.log("DB: initialized products table from products.csv");
-    }
-    if (fs.existsSync("managers.csv")) {
-      await client.query("DROP TABLE IF EXISTS users CASCADE");
-      await client.query("DROP TABLE IF EXISTS employees");
-      await client.query("DROP TABLE IF EXISTS managers");
       await client.query(
         "CREATE TABLE users (id BIGINT PRIMARY KEY, name TEXT, email TEXT, password TEXT)"
       );
       await client.query(
-        "CREATE TABLE managers (id BIGINT PRIMARY KEY, CONSTRAINT id_fk FOREIGN KEY(id) REFERENCES users(id));"
+        "CREATE TABLE stores (storeid BIGINT PRIMARY KEY, city TEXT, state char(2))"
+      );
+      await client.query(
+        "CREATE TABLE manages (id BIGINT PRIMARY KEY, CONSTRAINT id_fk FOREIGN KEY(id) REFERENCES users(id));"
       );
       await client.query(
         "CREATE TABLE employees (id BIGINT PRIMARY KEY, CONSTRAINT id_fk FOREIGN KEY(id) REFERENCES users(id));"
       );
-      await console.log("DB: Re-created user tables");
-      await client.query(
-        "COPY users(id, name, email, password) FROM '" +
-          __dirname +
-          "/managers.csv' DELIMITER ',' CSV HEADER"
+      await console.log("DB: Created tables");
+      await exec(
+        `psql -d postgres -c "\\copy Products FROM STDIN WITH DELIMITER ','CSV HEADER;" < products.csv`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`exec error: ${error}`);
+          }
+        }
+      );
+      await exec(
+        `psql -d postgres -c "\\copy Users FROM STDIN WITH DELIMITER ','CSV HEADER;" < manages.csv`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`exec error: ${error}`);
+          }
+        }
+      );
+      await exec(
+        `psql -d postgres -c "\\copy Stores FROM STDIN WITH DELIMITER ','CSV HEADER;" < stores.csv`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`exec error: ${error}`);
+          }
+        }
       );
       await client.query("INSERT INTO employees(id) SELECT id FROM users");
-      await client.query("INSERT INTO managers(id) SELECT id FROM users");
-      await console.log("DB: initialized user tables");
+      await client.query("INSERT INTO manages(id) SELECT id FROM users");
+      await console.log("DB: initialized tables");
       await console.log("DB: Done!");
+    } else {
+      await console.error("DB: .csv files not found");
     }
   } else {
-    console.log("DB: Skipping initialization");
+    await console.log("DB: skipping initialization");
   }
 });
 
