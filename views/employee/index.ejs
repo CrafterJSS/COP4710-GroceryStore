@@ -1,0 +1,43 @@
+<h1>Employee page</h1>
+<h2>
+  Hello <%= name %>
+  <form action="/logout" method="POST">
+    <button type="submit">Log Out</button>
+  </form>
+</h2>
+
+<a href="/employee/updateproduct">Update a product</a>
+<br />
+<a href="/employee/newproduct">Add a new product</a>
+<div>
+  <form action="/employee" method="get">
+    <div>
+      <br />
+      <label for="searchQuery">Search:</label>
+      <input type="text" id="searchQuery" name="q" autocomplete="off" />
+      <button type="submit">Go!</button>
+    </div>
+  </form>
+</div>
+
+<% if (q) { %>
+<h2>Search results for "<%= q %>":</h2>
+<table border="1">
+  <tr>
+    <th>UPC</th>
+    <th>Name</th>
+    <th>Brand</th>
+    <th>Price</th>
+    <th>Qty</th>
+  </tr>
+  <% data.forEach(entry => { %>
+  <tr>
+    <td><%= entry.upc %></td>
+    <td><%= entry.name %></td>
+    <td><%= entry.brand %></td>
+    <td><%= entry.price %></td>
+    <td><%= entry.qty %></td>
+  </tr>
+  <% }) %>
+</table>
+<% } %>
