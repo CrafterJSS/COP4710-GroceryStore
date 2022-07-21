@@ -1,4 +1,4 @@
-<h1>Login</h1>
+<!-- <h1>Login</h1>
 <% if (messages.error) { %> <%= messages.error %> <% } %>
 <form action="/login" method="POST">
   <div>
@@ -11,4 +11,72 @@
   </div>
   <button type="submit">Login</button>
 </form>
-<a href="/register">Register</a>
+<a href="/register">Register</a> -->
+<style>
+  html,
+  body {
+    height: 100%;
+  }
+
+  main {
+    display: flex;
+    align-items: center;
+    padding-top: 40px;
+    padding-bottom: 40px;
+    /* background-color: #f5f5f5; */
+  }
+
+  .form-signin {
+    max-width: 330px;
+    padding: 15px;
+  }
+
+  .form-signin .form-floating:focus-within {
+    z-index: 2;
+  }
+
+  .form-signin input[type="email"] {
+    margin-bottom: -1px;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .form-signin input[type="password"] {
+    margin-bottom: 10px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+</style>
+
+<main class="form-signin w-100 m-auto text-center">
+  <form action="/login" method="POST">
+    <h1 class="h3 mb-3 fw-normal">Sign in</h1>
+
+    <div class="form-floating">
+      <input
+        type="email"
+        class="form-control"
+        id="email"
+        name="email"
+        placeholder="name@example.com" required
+      />
+      <label for="email">Email address</label>
+    </div>
+    <div class="form-floating">
+      <input
+        type="password"
+        class="form-control"
+        id="password"
+        name="password"
+        placeholder="Password" required
+      />
+      <label for="password">Password</label>
+    </div>
+
+    <div class="d-grid gap-2 d-md-block">
+      <button class="btn btn-success" type="submit">Sign in</button>
+      <a href="/register" class="btn btn-secondary" role="button">Register</a>
+    </div>
+  </form>
+</main>
+<% if (messages.error) { %> <p style="color: red;"><%= messages.error %></p> <% } %>
