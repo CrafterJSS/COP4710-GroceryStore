@@ -81,7 +81,7 @@ app.use(passport.session());
 // Routes
 //
 
-app.get("/", checkEmployeeAuthenticated, checkAuthenticated, (req, res) => {
+app.get("/", checkAuthenticated, (req, res) => {
   res.render("index", { name: req.user.name });
 });
 
@@ -165,7 +165,9 @@ app.get("/password", checkAuthenticated, async (req, res) => {
   res.render("password");
 });
 
-app.post("/password", checkAuthenticated, async (req, res) => {});
+app.post("/password", checkAuthenticated, async (req, res) => {
+  //if (bcrypt.compare(req.body.oldPassword, req.user.password))
+});
 
 // Employees route
 app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
@@ -188,40 +190,63 @@ app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
   }
 });
 
-app.get("/employee/newproduct", checkEmployeeAuthenticated, async (req, res) => {
-  res.render("employee/newproduct", { response: null });
-});
+app.get(
+  "/employee/newproduct",
+  checkEmployeeAuthenticated,
+  async (req, res) => {
+    res.render("employee/newproduct", { response: null });
+  }
+);
 
-app.post("/employee/newproduct", checkEmployeeAuthenticated, async (req, res) => {
-  await db.query(
-    "INSERT INTO products(upc, name, brand, price, qty) VALUES($1, $2, $3, $4, $5)",
-    [req.body.upc, req.body.name, req.body.brand, req.body.price, req.body.qty]
-  );
-  res.redirect("/employee/newproduct");
-});
+app.post(
+  "/employee/newproduct",
+  checkEmployeeAuthenticated,
+  async (req, res) => {
+    await db.query(
+      "INSERT INTO products(upc, name, brand, price, qty) VALUES($1, $2, $3, $4, $5)",
+      [
+        req.body.upc,
+        req.body.name,
+        req.body.brand,
+        req.body.price,
+        req.body.qty,
+      ]
+    );
+    res.redirect("/employee/newproduct");
+  }
+);
 
-app.get("/employee/updateproduct",checkEmployeeAuthenticated, async (req, res) => {
-  res.render("employee/updateproduct");
-});
+app.get(
+  "/employee/updateproduct",
+  checkEmployeeAuthenticated,
+  async (req, res) => {
+    res.render("employee/updateproduct");
+  }
+);
 
-app.post("/employee/updateproduct",checkEmployeeAuthenticated, async (req, res) => {
-  await db.query("UPDATE products SET price = $2, qty = $3 WHERE upc = $1", [
-    req.body.upc,
-    req.body.price,
-    req.body.qty,
-  ]);
-  res.redirect("/employee/updateproduct");
-});
+app.post(
+  "/employee/updateproduct",
+  checkEmployeeAuthenticated,
+  async (req, res) => {
+    await db.query("UPDATE products SET price = $2, qty = $3 WHERE upc = $1", [
+      req.body.upc,
+      req.body.price,
+      req.body.qty,
+    ]);
+    res.redirect("/employee/updateproduct");
+  }
+);
 
-// New Employee route
-app.get("employee/new", (req, res) => {
-  res.render("employee/new");
-});
+// FIXME:
+// // New Employee route
+// app.get("employee/new", checkEmployeeAuthenticated, (req, res) => {
+//   res.render("employee/new");
+// });
 
-// Create new employee route
-app.post("/", (req, res) => {
-  res.send("Create");
-});
+// // Create new employee route
+// app.post("/", (req, res) => {
+//   res.send("Create");
+// });
 
 // FIXME: debugging
 app.get("/users", async (req, res) => {
@@ -251,16 +276,20 @@ function checkNotAuthenticated(req, res, next) {
 async function checkEmployeeAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     const results = await db.query(
-      "SELECT EXISTS (SELECT id FROM employees WHERE id = $1) AS isEmployee",
+      "SELECT EXISTS (SELECT id FROM employees WHERE id = $1) AS is_employee",
       [req.user.id]
     );
-    if (results.rows[0]) {
+    if (results.rows[0].is_employee) {
       console.log("Employee authenticated successfully");
       return next();
+    } else {
+      console.log("Employee authentication failed: not employee");
+      res.redirect("/");
     }
+  } else {
+    console.log("Employee authentication failed: not logged in");
+    res.redirect("/login");
   }
-  console.log("Employee authentication failed");
-  res.redirect('/login')
 }
 
 //
@@ -269,7 +298,7 @@ async function checkEmployeeAuthenticated(req, res, next) {
 
 const db = require("./db");
 
-// Verifies the connection to the postgres database and initializes it
+// Some incredibly messy code which verifies the connection to the postgres database and initializes it
 db.connect(async (err, client, release) => {
   if (err) {
     return console.error("Error acquiring client", err.stack);
@@ -308,7 +337,7 @@ db.connect(async (err, client, release) => {
       await client.query("DROP TABLE IF EXISTS manages");
       await console.log("DB: Dropped tables");
       await client.query(
-        "CREATE TABLE products (upc char(12) PRIMARY KEY, name varchar(50), brand varchar(30), price numeric(7, 2), qty int)"
+        "CREATE TABLE products (upc char(12) PRIMARY KEY, name varchar(50), brand varchar(30), price numeric(7, 2), qty int, CONSTRAINT product_price_chk CHECK(price > 0), CONSTRAINT product_qty_chk CHECK(qty >= 0))"
       );
       await client.query(
         "CREATE TABLE users (id BIGINT PRIMARY KEY, name TEXT, email TEXT, password TEXT)"
@@ -332,23 +361,23 @@ db.connect(async (err, client, release) => {
         }
       );
       await exec(
-        `psql -d postgres -c "\\copy Users FROM STDIN WITH DELIMITER ','CSV HEADER;" < manages.csv`,
-        (error, stdout, stderr) => {
-          if (error) {
-            console.error(`exec error: ${error}`);
-          }
-        }
-      );
-      await exec(
         `psql -d postgres -c "\\copy Stores FROM STDIN WITH DELIMITER ','CSV HEADER;" < stores.csv`,
         (error, stdout, stderr) => {
           if (error) {
             console.error(`exec error: ${error}`);
           }
+          exec(
+            `psql -d postgres -c "\\copy Users FROM STDIN WITH DELIMITER ','CSV HEADER;" < manages.csv`,
+            (error, stdout, stderr) => {
+              if (error) {
+                console.error(`exec error: ${error}`);
+              }
+              client.query("INSERT INTO employees(id) SELECT id FROM users");
+              client.query("INSERT INTO manages(id) SELECT id FROM users");
+            }
+          );
         }
       );
-      await client.query("INSERT INTO employees(id) SELECT id FROM users");
-      await client.query("INSERT INTO manages(id) SELECT id FROM users");
       await console.log("DB: initialized tables");
       await console.log("DB: Done!");
     } else {
