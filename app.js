@@ -229,32 +229,51 @@ app.post(
         req.body.brand,
         req.body.price,
         req.body.qty,
-      ]
+      ],
+      (err, result) => {
+        if (err) {
+          console.error("Error executing query", err.stack);
+          req.flash("info", "Error executing query");
+          req.render("/employee/newproduct");
+        }
+        req.flash("info", "Product created successfully");
+        res.render("/employee/newproduct");
+      }
     );
-    res.redirect("/employee/newproduct");
   }
 );
 
 // Update an existing product
-app.get(
-  "/employee/updateproduct",
-  checkEmployeeAuthenticated,
-  async (req, res) => {
-    res.render("employee/updateproduct");
-  }
-);
+app.get("/employee/updateproduct", checkEmployeeAuthenticated, (req, res) => {
+  res.render("employee/updateproduct");
+});
 
 // POST request handler for updating products
 app.post(
   "/employee/updateproduct",
   checkEmployeeAuthenticated,
   async (req, res) => {
-    await db.query("UPDATE products SET price = $2, qty = $3 WHERE upc = $1", [
-      req.body.upc,
-      req.body.price,
-      req.body.qty,
-    ]);
-    res.redirect("/employee/updateproduct");
+    try {
+      await db.query(
+        "UPDATE products SET price = $2, qty = $3 WHERE upc = $1",
+        [req.body.upc, req.body.price, req.body.qty],
+        (err) => {
+          if (err) {
+            console.error("Error executing query", err.stack);
+            req.flash("info", "Error executing query");
+            req.render("/employee/updateproduct");
+          }
+          req.flash("info", "Product updated successfully");
+          res.render("/employee/updateproduct");
+        }
+      );
+      req.flash("info", "Product updated successfully");
+      res.render("/employee/updateproduct");
+    } catch (err) {
+      req.flash("info", "Error executing query");
+      req.render("/employee/updateproduct");
+      console.error(err);
+    }
   }
 );
 
@@ -315,6 +334,10 @@ async function checkEmployeeAuthenticated(req, res, next) {
     res.redirect("/login");
   }
 }
+
+/* process.on("unhandledRejection", (reason, promise) => {
+  console.log("Unhandled Rejection at:", reason.stack || reason);
+}); */
 
 //
 // PostgreSQL

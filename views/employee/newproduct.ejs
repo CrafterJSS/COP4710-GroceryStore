@@ -1,6 +1,9 @@
 <div class="container">
   <h2>Add a new product</h2>
   <a href="/employee">Employee home</a>
+  <% if (messages.error) { %>
+  <p style="color: red"><%= messages.info %></p>
+  <% } %>
   <form action="/employee/newproduct" method="POST">
     <br />
     <div>
