@@ -31,16 +31,16 @@ Register:
 
 Search:
 
-![register page](/screenshots/search.png)
+![search page](/screenshots/search.png)
 
 Stores:
 
-![register page](/screenshots/stores.png)
+![stores page](/screenshots/stores.png)
 
 Employee Page:
 
-![register page](/screenshots/employee.png)
+![employee page](/screenshots/employee.png)
 
 New Product Page:
 
-![register page](/screenshots/newproduct.png)
+![newproduct page](/screenshots/newproduct.png)
