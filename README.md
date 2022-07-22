@@ -8,7 +8,7 @@ Database Design final project by Jonathan Svensson and Maggie Liott
 
 ## Instructions:
 1. Run `npm install` from the project root directory
-2. Run `npm start` to run the application which can be acessed from `localhost:8080` in the browser
+2. Run `npm start` to run the application which can be accessed from `localhost:8080` in the browser
 
 ## Screenshots:
 Login:
