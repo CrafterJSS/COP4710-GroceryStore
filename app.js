@@ -17,11 +17,15 @@ const bcrypt = require("bcrypt");
 const passport = require("passport");
 const session = require("express-session");
 const flash = require("express-flash");
-const port = process.env.PORT || 8080;
 const { exec } = require("child_process");
 const initializePassport = require("./auth/passport-config");
+const port = process.env.PORT || 8080;
 
-// Only use database authentication if set to true
+//
+// Initialization
+//
+
+// Only use database authentication if process.env.USE_DB_AUTH is set to 1, otherwise use an array for debugging
 const users = [
   {
     id: 1,
@@ -77,24 +81,33 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Start listening to requests on the set port
+app.listen(port, () => {
+  console.log(`App listening on port ${port}`);
+});
+
 //
 // Routes
 //
 
+// Home page
 app.get("/", checkAuthenticated, (req, res) => {
   res.render("index", { name: req.user.name });
 });
 
+// Login page
 app.get("/login", checkNotAuthenticated, (req, res) => {
   res.render("login");
 });
 
+// Registration page
 app.get("/register", checkNotAuthenticated, (req, res) => {
   res.render("register");
 });
 
 app.get("/logout", checkAuthenticated);
 
+// POST request handler for logins, using Passport.js authentication
 app.post(
   "/login",
   checkNotAuthenticated,
@@ -105,6 +118,7 @@ app.post(
   })
 );
 
+// POST request handler for registrations. Hash+salt passwords and add new user to database, then redirect to login page
 app.post("/register", checkNotAuthenticated, async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -128,6 +142,7 @@ app.post("/register", checkNotAuthenticated, async (req, res) => {
   }
 });
 
+// POST request handler for logging out
 app.post("/logout", function (req, res) {
   req.logout(function (err) {
     if (err) {
@@ -137,6 +152,7 @@ app.post("/logout", function (req, res) {
   });
 });
 
+// The search page. Handles url encoded search queries to the database and returns back the results to be displayed
 app.get("/search", checkAuthenticated, async (req, res) => {
   if (req.query.q) {
     const result = await db.query(
@@ -153,6 +169,7 @@ app.get("/search", checkAuthenticated, async (req, res) => {
   }
 });
 
+// List the stores by querying from the database
 app.get("/stores", async (req, res) => {
   const result = await db.query("SELECT * FROM stores");
   console.log("/stores");
@@ -161,15 +178,15 @@ app.get("/stores", async (req, res) => {
   res.render("stores", { data: result.rows });
 });
 
-app.get("/password", checkAuthenticated, async (req, res) => {
-  res.render("password");
-});
+// TODO: password reset
+// app.get("/password", checkAuthenticated, async (req, res) => {
+//   res.render("password");
+// });
+// app.post("/password", checkAuthenticated, async (req, res) => {
+//   //if (bcrypt.compare(req.body.oldPassword, req.user.password))
+// });
 
-app.post("/password", checkAuthenticated, async (req, res) => {
-  //if (bcrypt.compare(req.body.oldPassword, req.user.password))
-});
-
-// Employees route
+// Employees route, copies search functionality from /search
 app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
   if (req.query.q) {
     const result = await db.query(
@@ -190,6 +207,7 @@ app.get("/employee", checkEmployeeAuthenticated, async (req, res) => {
   }
 });
 
+// Add a new product
 app.get(
   "/employee/newproduct",
   checkEmployeeAuthenticated,
@@ -198,6 +216,7 @@ app.get(
   }
 );
 
+// POST request handler for new products
 app.post(
   "/employee/newproduct",
   checkEmployeeAuthenticated,
@@ -216,6 +235,7 @@ app.post(
   }
 );
 
+// Update an existing product
 app.get(
   "/employee/updateproduct",
   checkEmployeeAuthenticated,
@@ -224,6 +244,7 @@ app.get(
   }
 );
 
+// POST request handler for updating products
 app.post(
   "/employee/updateproduct",
   checkEmployeeAuthenticated,
@@ -248,7 +269,7 @@ app.post(
 //   res.send("Create");
 // });
 
-// FIXME: debugging
+// FIXME: for debugging purposes, returns back all users in JSON format
 app.get("/users", async (req, res) => {
   if (process.env.USE_DB_AUTH == 1) {
     const results = await db.query("SELECT * FROM users");
@@ -258,6 +279,7 @@ app.get("/users", async (req, res) => {
   }
 });
 
+// CREDIT to Web Dev Simplified: Middle-ware function to check if the user is logged in
 function checkAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
@@ -266,6 +288,7 @@ function checkAuthenticated(req, res, next) {
   res.redirect("/login");
 }
 
+// CREDIT to Web Dev Simplified: Middle-ware function to check if the user is not logged in
 function checkNotAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return res.redirect("/");
@@ -273,6 +296,7 @@ function checkNotAuthenticated(req, res, next) {
   next();
 }
 
+// Middle-ware function to check if the user is logged in as an employee by querying the employees database
 async function checkEmployeeAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     const results = await db.query(
@@ -337,13 +361,13 @@ db.connect(async (err, client, release) => {
       await client.query("DROP TABLE IF EXISTS manages");
       await console.log("DB: Dropped tables");
       await client.query(
-        "CREATE TABLE products (upc char(12) PRIMARY KEY, name varchar(50), brand varchar(30), price numeric(7, 2), qty int, CONSTRAINT product_price_chk CHECK(price > 0), CONSTRAINT product_qty_chk CHECK(qty >= 0))"
+        "CREATE TABLE products (upc char(12) PRIMARY KEY, name varchar(50) NOT NULL, brand varchar(30) NOT NULL, price numeric(7, 2) NOT NULL, qty int NOT NULL, CONSTRAINT product_price_chk CHECK(price > 0), CONSTRAINT product_qty_chk CHECK(qty >= 0))"
       );
       await client.query(
-        "CREATE TABLE users (id BIGINT PRIMARY KEY, name TEXT, email TEXT, password TEXT)"
+        "CREATE TABLE users (id BIGINT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, password TEXT NOT NULL)"
       );
       await client.query(
-        "CREATE TABLE stores (storeid BIGINT PRIMARY KEY, city TEXT, state char(2))"
+        "CREATE TABLE stores (storeid BIGINT PRIMARY KEY, city TEXT NOT NULL, state char(2) NOT NULL)"
       );
       await client.query(
         "CREATE TABLE manages (id BIGINT PRIMARY KEY, CONSTRAINT id_fk FOREIGN KEY(id) REFERENCES users(id));"
@@ -386,9 +410,4 @@ db.connect(async (err, client, release) => {
   } else {
     await console.log("DB: skipping initialization");
   }
-});
-
-// Start listening to requests on the set port
-app.listen(port, () => {
-  console.log(`App listening on port ${port}`);
 });

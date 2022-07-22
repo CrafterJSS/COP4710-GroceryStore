@@ -1,3 +1,5 @@
+// Credit to Web Dev Simplified, initializes Passport.js with the necessary authentication functions
+
 const localStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcrypt");
 
